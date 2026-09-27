@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  INSTRUCTOR
+  STUDENT
+}
+
+enum Level {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  fullName  String
+  role      Role     @default(STUDENT)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  courses     Course[]
+  enrollments Enrollment[]
+  certificates Certificate[]
+  notifications Notification[]
+  quizAttempts StudentQuizAttempt[]
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  courses     Course[]
+}
+
+model Course {
+  id           String   @id @default(uuid())
+  title        String
+  description  String
+  categoryId   String
+  category     Category @relation(fields: [categoryId], references: [id])
+  instructorId String
+  instructor   User     @relation(fields: [instructorId], references: [id])
+  imageUrl     String?
+  price        Float    @default(0)
+  level        Level    @default(BEGINNER)
+  isPublished  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions     Session[]
+  enrollments  Enrollment[]
+}
+
+model Enrollment {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id])
+  enrolledAt DateTime @default(now())
+  progress   Float    @default(0)
+  completed  Boolean  @default(false)
+  certificateIssued Boolean @default(false)
+
+  @@unique([userId, courseId])
+}
+
+model Session {
+  id          String   @id @default(uuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id])
+  title       String
+  description String?
+  videoUrl    String?
+  order       Int
+  createdAt   DateTime @default(now())
+
+  attachments Attachment[]
+  quizzes     Quiz[]
+}
+
+model Attachment {
+  id        String  @id @default(uuid())
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id])
+  fileName  String
+  fileUrl   String
+  fileType  String
+}
+
+model Quiz {
+  id        String  @id @default(uuid())
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id])
+  title     String
+  description String?
+
+  questions Question[]
+  attempts  StudentQuizAttempt[]
+}
+
+model Question {
+  id      String  @id @default(uuid())
+  quizId  String
+  quiz    Quiz    @relation(fields: [quizId], references: [id])
+  text    String
+  order   Int
+  marks   Float   @default(1)
+
+  options Option[]
+}
+
+model Option {
+  id         String  @id @default(uuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id])
+  text       String
+  isCorrect  Boolean @default(false)
+}
+
+model StudentQuizAttempt {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  quizId      String
+  quiz        Quiz     @relation(fields: [quizId], references: [id])
+  score       Float?
+  totalMarks  Float?
+  submittedAt DateTime @default(now())
+
+  answers     StudentAnswer[]
+}
+
+model StudentAnswer {
+  id          String  @id @default(uuid())
+  attemptId   String
+  attempt     StudentQuizAttempt @relation(fields: [attemptId], references: [id])
+  questionId  String
+  question    Question @relation(fields: [questionId], references: [id])
+  selectedOptionId String?
+  selectedOption Option?  @relation(fields: [selectedOptionId], references: [id])
+}
+
+model Certificate {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id])
+  issueDate   DateTime @default(now())
+  certificateCode String @unique
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  message   String
+  read      Boolean  @default(false)
+  type      String
+  referenceId String?
+  createdAt DateTime @default(now())
+}
